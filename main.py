@@ -182,18 +182,28 @@ def set_color(color):
 root = tk.Tk()
 root.title("Concentric Polygon Generator with Layers")
 
-# Create the left frame for buttons and sliders
-control_frame = ttk.Frame(root, padding="10")
-control_frame.grid(row=0, column=0, sticky='ns')
+# Set the window to a standard size (e.g., 800x600)
+root.geometry("800x600")
 
-# Create the right frame for the plot
+# Create the left frame for buttons and sliders (set a fixed width)
+control_frame = ttk.Frame(root, padding="10", width=250)  # Fixed width for the left panel
+control_frame.grid(row=0, column=0, sticky='ns')
+control_frame.grid_propagate(False)  # Prevent the frame from resizing based on its contents
+
+# Create the right frame for the plot (this will adjust to the remaining space)
 plot_frame = ttk.Frame(root)
 plot_frame.grid(row=0, column=1, sticky='nsew')
+
+# Configure the grid layout to ensure proper scaling
+root.grid_columnconfigure(0, weight=0)  # Left panel should not expand
+root.grid_columnconfigure(1, weight=1)  # Right panel should expand to fill available space
+root.grid_rowconfigure(0, weight=1)  # Make sure the right panel expands vertically
 
 # Add a canvas to the right frame for displaying the plot
 fig, ax = plt.subplots(figsize=(6, 6))
 canvas = FigureCanvasTkAgg(fig, master=plot_frame)
 canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
 
 # Radio buttons for selecting layers, now in 2 rows
 layer_var = tk.IntVar(value=1)  # Default to Layer 1
@@ -246,13 +256,25 @@ x_offset_slider = create_slider_with_label(control_frame, "X Offset", x_offset_l
 y_offset_slider = create_slider_with_label(control_frame, "Y Offset", y_offset_label_var, -50, 50, lambda *args: save_current_layer_properties())
 arc_extent_slider = create_slider_with_label(control_frame, "Arc Extent", arc_extent_label_var, 10, 360, lambda *args: save_current_layer_properties())
 roundness_slider = create_slider_with_label(control_frame, "Roundness", roundness_label_var, 0, 10, lambda *args: save_current_layer_properties())
+# Set fixed size for the control frame
+control_frame.pack_propagate(False)
 
-# Add buttons to select color in two rows of 3 + 1 layout
+
+# Add buttons to select color in two rows of 3 + 1 layout with fixed width and height
 color_frame = ttk.Frame(control_frame)
-color_frame.pack(pady=10)
-colors = ['#00FF00', '#FF0000', '#0000FF', '#000000', '#FFFF00', '#FF00FF']
+color_frame.pack(pady=2)
+
+colors = ['green', 'red', 'blue', 'black', 'yellow', 'pink']
+
+# Adjust the size of the color buttons using width and height
 for i, color in enumerate(colors):
-    color_button = Button(color_frame, bg=color, width=50, height=25, command=lambda c=color: set_color(c))
+    color_button = Button(
+        color_frame,
+        bg=color,
+        width=3,  # Adjust width
+        height=3,  # Adjust height
+        command=lambda c=color: set_color(c)
+    )
     color_button.grid(row=i // 3, column=i % 3, padx=5, pady=5)
 
 # Button to clear the current layer
