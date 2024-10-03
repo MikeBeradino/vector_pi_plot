@@ -183,7 +183,7 @@ root = tk.Tk()
 root.title("Concentric Polygon Generator with Layers")
 
 # Set the window to a standard size (e.g., 800x600)
-root.geometry("800x600")
+root.geometry("800x800")
 
 # Create the left frame for buttons and sliders (set a fixed width)
 control_frame = ttk.Frame(root, padding="10", width=250)  # Fixed width for the left panel
@@ -237,7 +237,7 @@ roundness_label_var = tk.StringVar()
 def create_slider_with_label(parent, label_text, slider_var, from_, to_, command, resolution=0.01):
     label = ttk.Label(parent, text=label_text)
     label.pack(anchor='w')
-    slider = tk.Scale(parent, from_=from_, to=to_, orient='horizontal', command=lambda *args: update_slider_label(slider_var, slider, command), resolution=resolution)
+    slider = tk.Scale(parent, from_=from_, to=to_, orient='horizontal',width=10,command=lambda *args: update_slider_label(slider_var, slider, command), resolution=resolution)
     slider.pack(fill='x')
     return slider
 
@@ -248,7 +248,7 @@ def update_slider_label(slider_var, slider, command):
     command()
 
 
-num_sides_slider = create_slider_with_label(control_frame, "Number of Sides", num_sides_label_var, 3, 20, lambda *args: save_current_layer_properties(), resolution=1)  # Integers
+num_sides_slider = create_slider_with_label(control_frame, "Number of Sides", num_sides_label_var, 3, 20,lambda *args: save_current_layer_properties(), resolution=1)  # Integers
 shape_size_slider = create_slider_with_label(control_frame, "Shape Size", shape_size_label_var, 1, 40, lambda *args: save_current_layer_properties())  # Max size 40
 size_increment_slider = create_slider_with_label(control_frame, "Size Increment", size_increment_label_var, 0.5, 5, lambda *args: save_current_layer_properties())
 rotation_increment_slider = create_slider_with_label(control_frame, "Rotation Increment", rotation_increment_label_var, 0, 90, lambda *args: save_current_layer_properties())
@@ -271,8 +271,8 @@ for i, color in enumerate(colors):
     color_button = Button(
         color_frame,
         bg=color,
-        width=3,  # Adjust width
-        height=3,  # Adjust height
+        width=30,  # Adjust width
+        height=30,  # Adjust height
         command=lambda c=color: set_color(c)
     )
     color_button.grid(row=i // 3, column=i % 3, padx=5, pady=5)
