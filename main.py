@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tool_paths import open_tool_path_window
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import numpy as np
@@ -84,7 +85,6 @@ def generate_concentric_polygons(ax, properties):
     ax.set_frame_on(False)
     ax.axis('off')
     ax.set_aspect('equal', adjustable='box')
-
 
 
 # Function to apply Bézier curve for rounding the corners of the polygon
@@ -182,6 +182,8 @@ def set_color(color):
 root = tk.Tk()
 root.title("Concentric Polygon Generator with Layers")
 
+
+
 # Set the window to a standard size (e.g., 800x600)
 root.geometry("800x800")
 
@@ -198,6 +200,30 @@ plot_frame.grid(row=0, column=1, sticky='nsew')
 root.grid_columnconfigure(0, weight=0)  # Left panel should not expand
 root.grid_columnconfigure(1, weight=1)  # Right panel should expand to fill available space
 root.grid_rowconfigure(0, weight=1)  # Make sure the right panel expands vertically
+
+# Add buttons to the right side (above the plot)
+button_frame = ttk.Frame(plot_frame)
+button_frame.pack(side=tk.TOP, pady=10)
+
+# Button to clear the current layer
+clear_layer_button = ttk.Button(button_frame, text="Clear Layer", command=clear_layer)
+clear_layer_button.grid(row=0, column=0, padx=10)
+
+# Button to export to SVG
+export_button = ttk.Button(button_frame, text="Export as SVG", command=export_to_svg)
+export_button.grid(row=0, column=1, padx=10)
+
+# Add a button to reset the sliders and everything
+reset_button = ttk.Button(button_frame, text="Reset All", command=lambda: reset_all())
+reset_button.grid(row=0, column=2, padx=10)
+
+# Add a button to open the new window for tool paths
+tool_path_button = ttk.Button(button_frame, text="Open Tool Path Window", command=lambda: open_tool_path_window(root))
+tool_path_button.grid(row=0, column=3, padx=10)
+
+# Add a button to open the new window for tool paths
+tool_path_button = ttk.Button(button_frame, text="Connect", command=lambda: open_serial_port_window(root))
+tool_path_button.grid(row=0, column=4, padx=10)
 
 # Add a canvas to the right frame for displaying the plot
 fig, ax = plt.subplots(figsize=(6, 6))
@@ -271,24 +297,11 @@ for i, color in enumerate(colors):
     color_button = Button(
         color_frame,
         bg=color,
-        width=30,  # Adjust width
-        height=30,  # Adjust height
+        width=1,  # Adjust width
+        height=1,  # Adjust height
         command=lambda c=color: set_color(c)
     )
     color_button.grid(row=i // 3, column=i % 3, padx=5, pady=5)
-
-# Button to clear the current layer
-clear_layer_button = ttk.Button(control_frame, text="Clear Layer", command=clear_layer)
-clear_layer_button.pack(pady=10)
-
-# Button to export to SVG
-export_button = ttk.Button(control_frame, text="Export as SVG", command=export_to_svg)
-export_button.pack(pady=10)
-
-# Add a button to reset the sliders and everything
-reset_button = ttk.Button(control_frame, text="Reset All", command=lambda: reset_all())
-reset_button.pack(pady=10)
-
 
 # Function to reset everything, including the sliders, layers, and canvas
 def reset_all():
@@ -323,18 +336,7 @@ def reset_sliders():
 
 
 # Function to open a new window (for tool path creation or any other feature)
-
-
-    # You can add additional widgets to the new window here
-    # For example: more sliders, buttons, canvases, etc.
-# Import the tool path window creation function from tool_paths.py
-from tool_paths import open_tool_path_window
-
-# Add a button to open the new window for tool paths
-tool_path_button = ttk.Button(control_frame, text="Open Tool Path Window", command=lambda: open_tool_path_window(root))
-tool_path_button.pack(pady=10)
-
-
+from tool_paths import open_tool_path_window ,open_serial_port_window
 
 # Initialize the plot with default values
 reset_all()
