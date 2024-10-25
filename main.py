@@ -1,13 +1,13 @@
 #jsut some tools
 import tkinter as tk
 from tkinter import ttk
-from tool_paths import open_tool_path_window
+from tool_paths import open_tool_path_window ,open_serial_port_window
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import numpy as np
 import platform
-
 from xml.dom import minidom
+
 
 # Detect the OS
 is_mac = platform.system() == "Darwin"
@@ -24,9 +24,6 @@ layer_properties[1] = {'num_layers': 5, 'num_sides': 4, 'shape_size': 5, 'size_i
 
 current_layer = 1  # Default to Layer 1
 current_color = layer_properties[1]['color']  # Default color of Layer 1
-
-from xml.dom import minidom
-
 
 # Function to remove rectangles from clipPath elements in the SVG and resave
 def remove_clip_path_rectangles(svg_filename):
@@ -223,8 +220,8 @@ tool_path_button = ttk.Button(button_frame, text="Open Tool Path Window", comman
 tool_path_button.grid(row=0, column=3, padx=10)
 
 # Add a button to open the new window for tool paths
-tool_path_button = ttk.Button(button_frame, text="Connect", command=lambda: open_serial_port_window(root))
-tool_path_button.grid(row=0, column=4, padx=10)
+tool_path_button2 = ttk.Button(button_frame, text="Connect", command=lambda: open_serial_port_window(root))
+tool_path_button2.grid(row=0, column=4, padx=10)
 
 # Add a canvas to the right frame for displaying the plot
 fig, ax = plt.subplots(figsize=(6, 6))
@@ -337,7 +334,7 @@ def reset_sliders():
 
 
 # Function to open a new window (for tool path creation or any other feature)
-from tool_paths import open_tool_path_window ,open_serial_port_window
+
 
 # Initialize the plot with default values
 reset_all()

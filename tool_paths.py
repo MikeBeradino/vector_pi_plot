@@ -7,6 +7,7 @@ import re
 import math
 import serial.tools.list_ports  # For serial port discovery
 import serial  # For serial communication
+#from print_module import HPGLPrinter
 
 # Plotter speeds in mm/s
 SLEWING_SPEED = 400  # Pen-up speed
@@ -51,6 +52,31 @@ def send_hpgl_command(command):
             messagebox.showerror("Error", f"Failed to send command: {e}")
     else:
         messagebox.showerror("Error", "Not connected to the plotter.")
+
+
+import time
+def send_hpgl_code_from_vect   ():
+    """Send HPGL code to the plotter."""
+    global hpgl_code
+    if not serial_connection:
+        messagebox.showerror("Error", "No connection to the plotter.")
+        return
+
+    try:
+        lines = hpgl_code.splitlines()
+        for line in lines:
+            serial_connection.write(f"{line}\n".encode())
+            serial_connection.flush()  # Ensure all data is sent
+            time.sleep(0.1)  # Add a small delay to allow the plotter to process each command
+            print(line)
+
+
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to send HPGL code: {e}")
+
+
+
 
 # Helper function to parse 'd' attribute from path elements (basic M and L commands)
 def parse_svg_path(path_data):
@@ -108,10 +134,14 @@ def convert_svg_to_hpgl():
     svg_doc = minidom.parse(current_svg)
     path_elements = svg_doc.getElementsByTagName('path')
 
-    # Get the canvas size in pixels and convert to points for comparison
+    # Initialize plotter command (HPGL)
+    hpgl_code_lines = ["IN;", "PA;"]  # Initialize plotter and use absolute coordinates
+
+    # Get the canvas size in pixels and convert to points
     canvas_width_px, canvas_height_px = get_svg_canvas_size(current_svg)
     canvas_width_pt = convert_px_to_pt(canvas_width_px)
     canvas_height_pt = convert_px_to_pt(canvas_height_px)
+
     print(f"Canvas size in points: {canvas_width_pt}x{canvas_height_pt}")
 
     # Calculate the four corners of the canvas in points
@@ -122,20 +152,18 @@ def convert_svg_to_hpgl():
 
     print(f"Canvas corners in points: {top_left}, {top_right}, {bottom_left}, {bottom_right}")
 
-    hpgl_code_lines = []
-
-    # Process path elements for toolpath generation
+    # Process each path element to generate HPGL commands
     for path in path_elements:
         path_data = path.getAttribute('d')
-        path_color = path.getAttribute('style')  # Extract the style attribute for color
+        path_color = path.getAttribute('style')
 
-        # Extract the fill or stroke color from the 'style' attribute (assuming 'stroke' or 'fill' contains color)
+        # Extract the stroke color from the 'style' attribute
         color_match = re.search(r'stroke:([^;]+);', path_color)
 
         if color_match:
-            color = color_match.group(1).strip().upper()  # Clean up whitespace and make uppercase
+            color = color_match.group(1).strip().upper()
 
-            # Map the color to a plotter pen using the color-to-pen mapping
+            # Map color to plotter pen using the color-to-pen mapping
             color_to_pen = {
                 '#FF0000': 1,  # Red
                 '#0000FF': 2,  # Blue
@@ -144,31 +172,43 @@ def convert_svg_to_hpgl():
                 '#FFFF00': 5,  # Yellow
                 '#FF00FF': 6,  # Pink
             }
-
-            pen_number = color_to_pen.get(color, 4)  # Default to black (pen 4) if color not found
-            hpgl_code_lines.append(f"SP{pen_number};")  # Select Pen command
+            pen_number = color_to_pen.get(color, 4)  # Default to black (pen 4)
+            hpgl_code_lines.append(f"SP{pen_number};")  # Select the pen
 
         points = parse_svg_path(path_data)
 
         if points:
-            # Check if the points form a rectangle matching the canvas size in points
-            if len(points) == 5 and ((points[0], points[1], points[2], points[3]) == (top_left, top_right, bottom_right, bottom_left) or (points[0], points[1], points[2], points[3]) == (bottom_left, bottom_right, top_right, top_left)):
-                # Skip this rectangle, as it represents the canvas border
+            # Check if the path represents the canvas border and skip it
+            if len(points) == 5 and (
+                (points[0], points[1], points[2], points[3]) == (top_left, top_right, bottom_right, bottom_left) or
+                (points[0], points[1], points[2], points[3]) == (bottom_left, bottom_right, top_right, top_left)
+            ):
                 print("Skipping canvas border rectangle")
                 continue
 
-            hpgl_code_lines.append(f"PU{int(points[0][0])},{int(points[0][1])};")
-            hpgl_code_lines.append("PD")  # Pen Down to start drawing
+            # Move to the starting point with Pen Up (PU)
+            start_x, start_y = int(points[0][0]), int(points[0][1])
+            hpgl_code_lines.append(f"PU{start_x},{start_y};")
 
+            # Begin drawing with Pen Down (PD)
+            hpgl_code_lines.append("PD;")  # Start Pen Down sequence
+
+            # Draw the path by adding each point with PA commands
             for x, y in points[1:]:
                 hpgl_code_lines.append(f"PA{int(x)},{int(y)};")
-            hpgl_code_lines.append("PU;")  # Pen Up at the end of the path
 
+            # End the drawing with Pen Up (PU)
+            hpgl_code_lines.append("PU;")
+
+    # Join all the HPGL commands into a single string
     hpgl_code = '\n'.join(hpgl_code_lines)
 
-    # Display the HPGL code in the text box
+    # Display the generated HPGL code in the text box
     hpgl_text_box.delete(1.0, tk.END)
     hpgl_text_box.insert(tk.END, hpgl_code)
+
+    print("HPGL code generated successfully.")
+
 
 # Function to calculate distance between two points
 def calculate_distance(x1, y1, x2, y2):
@@ -377,6 +417,16 @@ def add_serial_port_button(control_frame):
 # Add a button to the main window to open the tool path generation window
 tool_path_button = ttk.Button(root, text="Open Tool Path Window", command=lambda: open_tool_path_window(root))
 tool_path_button.pack(pady=10)
+
+
+
+
+
+
+# Add a button in the main window to send HPGL code to the printer
+ttk.Button(root, text="Print", command=send_hpgl_code_from_vect).pack(pady=10)
+
+
 
 #add_serial_port_button(root)
 
