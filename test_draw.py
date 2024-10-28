@@ -59,9 +59,21 @@ def disconnect_plotter():
 
 # Example usage
 hpgl_code = """
-IN;SP1;
-PU0,0;PD100,100;
-PA100,0,0,100;
+IN;
+PA;
+PU0,30487;
+PD;
+PA30487,30487;
+PA30487,0;
+PA0,0;
+PA0,30487;
+PU;
+SP4;
+PU21137,15243;
+PD;
+PA12297,10139;
+PA12297,20347;
+PA21137,15243;
 PU;
 """
 

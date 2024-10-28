@@ -7,6 +7,7 @@ import re
 import math
 import serial.tools.list_ports  # For serial port discovery
 import serial  # For serial communication
+import time
 #from print_module import HPGLPrinter
 
 # Plotter speeds in mm/s
@@ -22,12 +23,22 @@ serial_connection = None  # To store the serial connection object
 
 # After the root window is created, create `BooleanVar` for border toggling
 root = tk.Tk()
-root.title("Concentric Polygon Generator with Tool Path and Serial Communication")
+root.withdraw()  # Hide the window
 include_border = tk.BooleanVar(value=True)  # Create after the root window is initialized
 
 # Serial port tools - list available ports and initialize the baud rate
 available_ports = [port.device for port in serial.tools.list_ports.comports()]
 baud_rates = [75, 110, 150, 200, 300, 600, 1200, 2400, 2800, 9600, 19200, 38400, 57600, 115200]  # Available baud rates
+
+# Add this near the top of your script
+pen_color_mapping = {
+    1: 'red',
+    2: 'blue',
+    3: 'green',
+    4: 'black',  # Default pen color
+    5: 'yellow',
+    6: 'pink'
+}
 
 # Serial connection helper functions
 def connect_to_plotter(selected_port, selected_baud_rate):
@@ -53,8 +64,6 @@ def send_hpgl_command(command):
     else:
         messagebox.showerror("Error", "Not connected to the plotter.")
 
-
-import time
 def send_hpgl_code_from_vect   ():
     """Send HPGL code to the plotter."""
     global hpgl_code
@@ -74,9 +83,6 @@ def send_hpgl_code_from_vect   ():
 
     except Exception as e:
         messagebox.showerror("Error", f"Failed to send HPGL code: {e}")
-
-
-
 
 # Helper function to parse 'd' attribute from path elements (basic M and L commands)
 def parse_svg_path(path_data):
@@ -129,6 +135,8 @@ def convert_px_to_pt(px_value):
     return px_value / 1.333
 
 # Updated function to convert SVG to HPGL, excluding the canvas border and mapping pen colors
+
+
 def convert_svg_to_hpgl():
     global hpgl_code
     svg_doc = minidom.parse(current_svg)
@@ -137,20 +145,21 @@ def convert_svg_to_hpgl():
     # Initialize plotter command (HPGL)
     hpgl_code_lines = ["IN;", "PA;"]  # Initialize plotter and use absolute coordinates
 
-    # Get the canvas size in pixels and convert to points
+    # Get the canvas size in pixels
     canvas_width_px, canvas_height_px = get_svg_canvas_size(current_svg)
-    canvas_width_pt = convert_px_to_pt(canvas_width_px)
-    canvas_height_pt = convert_px_to_pt(canvas_height_px)
 
-    print(f"Canvas size in points: {canvas_width_pt}x{canvas_height_pt}")
+    # HPGL max units (for A4 paper in landscape)
+    HPGL_MAX_UNITS_X = 11880
+    HPGL_MAX_UNITS_Y = 8400
 
-    # Calculate the four corners of the canvas in points
-    top_left = (0.0, 0.0)
-    top_right = (canvas_width_pt, 0.0)
-    bottom_left = (0.0, canvas_height_pt)
-    bottom_right = (canvas_width_pt, canvas_height_pt)
+    # Calculate a uniform scaling factor to maintain aspect ratio
+    x_scale = HPGL_MAX_UNITS_X / canvas_width_px
+    y_scale = HPGL_MAX_UNITS_Y / canvas_height_px
 
-    print(f"Canvas corners in points: {top_left}, {top_right}, {bottom_left}, {bottom_right}")
+    # Use the smaller scaling factor to maintain aspect ratio
+    uniform_scale = min(x_scale, y_scale)
+
+    print(f"Uniform scale factor: {uniform_scale}")
 
     # Process each path element to generate HPGL commands
     for path in path_elements:
@@ -178,37 +187,37 @@ def convert_svg_to_hpgl():
         points = parse_svg_path(path_data)
 
         if points:
-            # Check if the path represents the canvas border and skip it
-            if len(points) == 5 and (
-                (points[0], points[1], points[2], points[3]) == (top_left, top_right, bottom_right, bottom_left) or
-                (points[0], points[1], points[2], points[3]) == (bottom_left, bottom_right, top_right, top_left)
-            ):
-                print("Skipping canvas border rectangle")
-                continue
-
             # Move to the starting point with Pen Up (PU)
-            start_x, start_y = int(points[0][0]), int(points[0][1])
-            hpgl_code_lines.append(f"PU{start_x},{start_y};")
+            start_x, start_y = points[0]
+            scaled_start_x = int(start_x * uniform_scale)
+            scaled_start_y = int(start_y * uniform_scale)
+            hpgl_code_lines.append(f"PU{scaled_start_x},{scaled_start_y};")
 
             # Begin drawing with Pen Down (PD)
             hpgl_code_lines.append("PD;")  # Start Pen Down sequence
 
             # Draw the path by adding each point with PA commands
             for x, y in points[1:]:
-                hpgl_code_lines.append(f"PA{int(x)},{int(y)};")
+                scaled_x = int(x * uniform_scale)
+                scaled_y = int(y * uniform_scale)
+                hpgl_code_lines.append(f"PA{scaled_x},{scaled_y};")
 
             # End the drawing with Pen Up (PU)
             hpgl_code_lines.append("PU;")
-
-    # Join all the HPGL commands into a single string
-    hpgl_code = '\n'.join(hpgl_code_lines)
 
     # Display the generated HPGL code in the text box
     hpgl_text_box.delete(1.0, tk.END)
     hpgl_text_box.insert(tk.END, hpgl_code)
 
-    print("HPGL code generated successfully.")
+    # Join all HPGL commands into a single string
+    hpgl_code = '\n'.join(hpgl_code_lines)
 
+    # Display the generated HPGL code (for debugging purposes)
+    print("Generated HPGL Code:\n", hpgl_code)
+
+    # Optionally, write the HPGL code to a file
+    with open("output.hpgl", "w") as hpgl_file:
+        hpgl_file.write(hpgl_code)
 
 # Function to calculate distance between two points
 def calculate_distance(x1, y1, x2, y2):
@@ -409,25 +418,3 @@ def open_serial_port_window(root):
     serial_window.columnconfigure(0, weight=1)
     serial_window.rowconfigure(1, weight=1)
 
-# Add a button to the main window to open the serial port connection tool
-def add_serial_port_button(control_frame):
-    serial_button = ttk.Button(control_frame, text="Open Serial Tool", command=lambda: open_serial_port_window(root))
-    serial_button.pack(pady=5)
-
-# Add a button to the main window to open the tool path generation window
-tool_path_button = ttk.Button(root, text="Open Tool Path Window", command=lambda: open_tool_path_window(root))
-tool_path_button.pack(pady=10)
-
-
-
-
-
-
-# Add a button in the main window to send HPGL code to the printer
-ttk.Button(root, text="Print", command=send_hpgl_code_from_vect).pack(pady=10)
-
-
-
-#add_serial_port_button(root)
-
-#root.mainloop()

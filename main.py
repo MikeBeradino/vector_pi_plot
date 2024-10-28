@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import platform
 from xml.dom import minidom
+import tool_paths
 
 
 # Detect the OS
@@ -18,12 +19,15 @@ if is_mac:
 else:
     Button = tk.Button  # Use default Button for non-macOS systems
 
+current_layer = 1  # Default to Layer 1
 # Store properties for six layers
 layer_properties = {i: None for i in range(1, 7)}
-layer_properties[1] = {'num_layers': 5, 'num_sides': 4, 'shape_size': 5, 'size_increment': 2, 'rotation_increment': 15, 'x_offset': 0, 'y_offset': 0, 'arc_extent': 360, 'roundness': 0, 'color': 'black'}
+layer_properties[current_layer] = {'num_layers': 5, 'num_sides': 4, 'shape_size': 5, 'size_increment': 2, 'rotation_increment': 15, 'x_offset': 0, 'y_offset': 0, 'arc_extent': 360, 'roundness': 0, 'color': 'black'}
 
-current_layer = 1  # Default to Layer 1
-current_color = layer_properties[1]['color']  # Default color of Layer 1
+
+current_color = layer_properties[current_layer]['color']  # Default color of Layer 1
+
+
 
 # Function to remove rectangles from clipPath elements in the SVG and resave
 def remove_clip_path_rectangles(svg_filename):
@@ -45,8 +49,8 @@ def remove_clip_path_rectangles(svg_filename):
 
 
 def generate_concentric_polygons(ax, properties):
-    if properties is None:
-        return  # Skip drawing if the layer is cleared
+    """Generate and plot concentric polygons for a given layer."""
+
 
     num_layers = properties['num_layers']
     num_sides = properties['num_sides']
@@ -61,6 +65,7 @@ def generate_concentric_polygons(ax, properties):
 
     base_size = shape_size
 
+    # Generate each polygon in the layer
     for layer in range(num_layers):
         scaled_size = base_size + layer * size_increment
         rotation = np.deg2rad(layer * rotation_increment)
@@ -73,16 +78,12 @@ def generate_concentric_polygons(ax, properties):
             x_points = np.append(x_points, x_points[0])
             y_points = np.append(y_points, y_points[0])
 
+        # Apply roundness if needed
         if roundness > 0:
             x_points, y_points = apply_bezier_roundness(x_points, y_points, roundness)
 
         # Plot the polygon
         ax.plot(x_points, y_points, lw=1, color=color)
-
-    # Disable axis, frame, and tight plot limits
-    ax.set_frame_on(False)
-    ax.axis('off')
-    ax.set_aspect('equal', adjustable='box')
 
 
 # Function to apply Bézier curve for rounding the corners of the polygon
@@ -123,49 +124,33 @@ def export_to_svg():
     print(f"Post-processed SVG saved without clipPath rectangles.")
 
 
-# Function to update the plot for all layers
-def update_plot(*args):
-    ax.clear()
-    ax.set_facecolor('#cdc7c5')  # Set the background color to cdc7c5
-    ax.set_xlim(-100, 100)  # Static X-axis limits
-    ax.set_ylim(-100, 100)  # Static Y-axis limits
-    ax.set_aspect('equal')
+def update_plot():
+    """Redraw the entire canvas with all layers."""
+    ax.clear()  # Clear the canvas
+    ax.set_facecolor('#cdc7c5')  # Set background color
+    ax.set_xlim(-100, 100)  # Set X-axis limits
+    ax.set_ylim(-100, 100)  # Set Y-axis limits
+    ax.set_aspect('equal')  # Maintain aspect ratio
     ax.axis('off')  # Hide axes
 
-    # Draw all layers (skip if layer is None)
+    # Draw each layer independently
     for layer_num, properties in layer_properties.items():
         if properties is not None:
+            print(f"Drawing Layer {layer_num} with properties: {properties}")  # Debugging
             generate_concentric_polygons(ax, properties)
+        else:
+            print(f"Skipping Layer {layer_num} (no properties).")  # Debugging
 
+    # Redraw the canvas
     canvas.draw()
 
 
-# Function to switch between layers using radio buttons
-def switch_layer():
-    global current_layer, current_color
-    current_layer = layer_var.get()  # Get selected layer from radio button
-    properties = layer_properties[current_layer]
 
-    if properties is not None:
-        num_layers_slider.set(properties['num_layers'])
-        num_sides_slider.set(properties['num_sides'])
-        shape_size_slider.set(properties['shape_size'])
-        size_increment_slider.set(properties['size_increment'])
-        rotation_increment_slider.set(properties['rotation_increment'])
-        x_offset_slider.set(properties['x_offset'])
-        y_offset_slider.set(properties['y_offset'])
-        arc_extent_slider.set(properties['arc_extent'])
-        roundness_slider.set(properties['roundness'])
-        current_color = properties['color']
-
-    update_plot()
-
-
-# Function to clear the current layer and not create a default shape until sliders are moved
 def clear_layer():
-    layer_properties[current_layer] = None  # Erase the current shape
-    update_plot()  # Redraw the plot without the shape
-
+    """Clear the currently selected layer."""
+    print(f"Clearing Layer {current_layer}.")  # Debugging
+    layer_properties[current_layer] = None  # Reset the active layer
+    update_plot()  # Redraw the plot without the cleared layer
 
 # Function to set the color based on button click
 def set_color(color):
@@ -183,12 +168,47 @@ root.title("Concentric Polygon Generator with Layers")
 
 
 # Set the window to a standard size (e.g., 800x600)
-root.geometry("800x800")
+root.geometry("1000x800")
 
 # Create the left frame for buttons and sliders (set a fixed width)
 control_frame = ttk.Frame(root, padding="10", width=250)  # Fixed width for the left panel
 control_frame.grid(row=0, column=0, sticky='ns')
 control_frame.grid_propagate(False)  # Prevent the frame from resizing based on its contents
+
+def switch_layer(layer_numb):
+    """Switch to the selected layer and update sliders."""
+
+    current_layer = layer_numb  # Get the selected layer from the radio button
+
+    # Debug: Print to confirm the current layer is updated correctly
+    print(f"Switched to Layer {current_layer}")
+
+    properties = layer_properties.get(current_layer)
+
+    if properties is not None:
+        print(f"Layer {current_layer} properties: {properties}")  # Debugging
+
+        # Update the sliders with the selected layer's properties
+        num_layers_slider.set(properties['num_layers'])
+        num_sides_slider.set(properties['num_sides'])
+        shape_size_slider.set(properties['shape_size'])
+        size_increment_slider.set(properties['size_increment'])
+        rotation_increment_slider.set(properties['rotation_increment'])
+        x_offset_slider.set(properties['x_offset'])
+        y_offset_slider.set(properties['y_offset'])
+        arc_extent_slider.set(properties['arc_extent'])
+        roundness_slider.set(properties['roundness'])
+        global current_color
+        current_color = properties['color']
+    else:
+        print(f"Layer {current_layer} is empty. Resetting sliders.")  # Debugging
+        reset_sliders()
+
+    # Update the plot to reflect the new layer selection
+    update_plot()
+
+
+
 
 # Create the right frame for the plot (this will adjust to the remaining space)
 plot_frame = ttk.Frame(root)
@@ -223,20 +243,37 @@ tool_path_button.grid(row=0, column=3, padx=10)
 tool_path_button2 = ttk.Button(button_frame, text="Connect", command=lambda: open_serial_port_window(root))
 tool_path_button2.grid(row=0, column=4, padx=10)
 
+
+# Add a button to open the new window for tool paths
+print_button = ttk.Button(button_frame, text="Print?", command=lambda: tool_paths.send_hpgl_code_from_vect())
+print_button.grid(row=0, column=5, padx=10)
+
+
 # Add a canvas to the right frame for displaying the plot
 fig, ax = plt.subplots(figsize=(6, 6))
 canvas = FigureCanvasTkAgg(fig, master=plot_frame)
 canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
 
-# Radio buttons for selecting layers, now in 2 rows
-layer_var = tk.IntVar(value=1)  # Default to Layer 1
+# Create radio buttons for selecting layers
+layer_var = tk.IntVar(value=1)  # Track selected layer (default to Layer 1)
 layer_frame = ttk.Frame(control_frame)
 layer_frame.pack(pady=10)
+
 ttk.Label(layer_frame, text="Select Layer").grid(row=0, column=0, columnspan=3)
 
+
+
 for i in range(1, 7):
-    ttk.Radiobutton(layer_frame, text=f"Layer {i}", variable=layer_var, value=i, command=switch_layer).grid(row=(i - 1) // 3 + 1, column=(i - 1) % 3, padx=5, pady=5)
+    ttk.Radiobutton(
+        layer_frame,
+        text=f"Layer {i}",
+        variable=layer_var,
+        value=i,
+        command=lambda i=i : switch_layer(i)
+    ).grid(row=(i - 1) // 3 + 1, column=(i - 1) % 3, padx=5, pady=5)
+
+
 
 # Label and slider for Number of Shapes, placed at the top
 num_layers_label_var = tk.StringVar()
@@ -310,18 +347,50 @@ def reset_all():
     reset_sliders()
     update_plot()
 
-
-# Function to save the current properties of the selected layer
 def save_current_layer_properties():
-    if layer_properties[current_layer] is None:
-        layer_properties[current_layer] = {'num_layers': 5, 'num_sides': 4, 'shape_size': 5, 'size_increment': 2, 'rotation_increment': 15, 'x_offset': 0, 'y_offset': 0, 'arc_extent': 360, 'roundness': 0, 'color': current_color}
+    """Save the properties of the currently selected layer."""
+    global layer_properties
 
-    layer_properties[current_layer] = {'num_layers': int(num_layers_slider.get()), 'num_sides': int(num_sides_slider.get()), 'shape_size': shape_size_slider.get(), 'size_increment': size_increment_slider.get(), 'rotation_increment': rotation_increment_slider.get(), 'x_offset': x_offset_slider.get(), 'y_offset': y_offset_slider.get(), 'arc_extent': arc_extent_slider.get(), 'roundness': roundness_slider.get(), 'color': current_color}
+    # Ensure the selected layer is initialized if not already done
+    if layer_properties[current_layer] is None:
+        print(f"Initializing properties for Layer {current_layer}")
+        layer_properties[current_layer] = {
+            'num_layers': 5,
+            'num_sides': 4,
+            'shape_size': 5.0,
+            'size_increment': 2.0,
+            'rotation_increment': 15.0,
+            'x_offset': 0.0,
+            'y_offset': 0.0,
+            'arc_extent': 360.0,
+            'roundness': 0.0,
+            'color': current_color,
+        }
+
+    # Update properties of the selected layer based on slider values
+    layer_properties[current_layer].update({
+        'num_layers': int(num_layers_slider.get()),
+        'num_sides': int(num_sides_slider.get()),
+        'shape_size': shape_size_slider.get(),
+        'size_increment': size_increment_slider.get(),
+        'rotation_increment': rotation_increment_slider.get(),
+        'x_offset': x_offset_slider.get(),
+        'y_offset': y_offset_slider.get(),
+        'arc_extent': arc_extent_slider.get(),
+        'roundness': roundness_slider.get(),
+        'color': current_color,
+    })
+
+    # Debug: Print updated properties for the selected layer
+    print(f"Layer {current_layer} properties updated: {layer_properties[current_layer]}")
+
+    # Redraw the plot to reflect the new properties
     update_plot()
 
 
-# Function to reset the sliders
 def reset_sliders():
+    """Reset all sliders to default values."""
+
     num_layers_slider.set(5)
     num_sides_slider.set(4)
     shape_size_slider.set(5)
@@ -331,12 +400,33 @@ def reset_sliders():
     y_offset_slider.set(0)
     arc_extent_slider.set(360)
     roundness_slider.set(0)
-
+    print("Sliders reset to default values.")  # Debugging
 
 # Function to open a new window (for tool path creation or any other feature)
 
 
 # Initialize the plot with default values
+
+
+# Initialize layer properties with default values
+def initialize_layer_properties(layer):
+    layer_properties[layer] = {
+        'num_layers': 5,
+        'num_sides': 4,
+        'shape_size': 5.0,
+        'size_increment': 2.0,
+        'rotation_increment': 15.0,
+        'x_offset': 0.0,
+        'y_offset': 0.0,
+        'arc_extent': 360.0,
+        'roundness': 0.0,
+        'color': 'black',
+    }
+    print(f"Initialized Layer {layer} with default properties.")
+
+
+
+
 reset_all()
 
 # Set up a flexible grid layout
