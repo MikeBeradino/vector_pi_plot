@@ -176,39 +176,30 @@ control_frame.grid(row=0, column=0, sticky='ns')
 control_frame.grid_propagate(False)  # Prevent the frame from resizing based on its contents
 
 def switch_layer(layer_numb):
-    """Switch to the selected layer and update sliders."""
+    global current_layer, current_color
+    current_layer = layer_numb
 
-    current_layer = layer_numb  # Get the selected layer from the radio button
+    if layer_properties[current_layer] is None:
+        initialize_layer_properties(current_layer)
 
-    # Debug: Print to confirm the current layer is updated correctly
-    print(f"Switched to Layer {current_layer}")
-
-    properties = layer_properties.get(current_layer)
-
-    if properties is not None:
-        print(f"Layer {current_layer} properties: {properties}")  # Debugging
-
-        # Update the sliders with the selected layer's properties
-        num_layers_slider.set(properties['num_layers'])
-        num_sides_slider.set(properties['num_sides'])
-        shape_size_slider.set(properties['shape_size'])
-        size_increment_slider.set(properties['size_increment'])
-        rotation_increment_slider.set(properties['rotation_increment'])
-        x_offset_slider.set(properties['x_offset'])
-        y_offset_slider.set(properties['y_offset'])
-        arc_extent_slider.set(properties['arc_extent'])
-        roundness_slider.set(properties['roundness'])
-        global current_color
-        current_color = properties['color']
-    else:
-        print(f"Layer {current_layer} is empty. Resetting sliders.")  # Debugging
-        reset_sliders()
-
-    # Update the plot to reflect the new layer selection
+    properties = layer_properties[current_layer]
+    update_sliders_from_properties(properties)
+    current_color = properties['color']
     update_plot()
 
 
 
+# Update sliders based on the selected layer's properties
+def update_sliders_from_properties(properties):
+    num_layers_slider.set(properties['num_layers'])
+    num_sides_slider.set(properties['num_sides'])
+    shape_size_slider.set(properties['shape_size'])
+    size_increment_slider.set(properties['size_increment'])
+    rotation_increment_slider.set(properties['rotation_increment'])
+    x_offset_slider.set(properties['x_offset'])
+    y_offset_slider.set(properties['y_offset'])
+    arc_extent_slider.set(properties['arc_extent'])
+    roundness_slider.set(properties['roundness'])
 
 # Create the right frame for the plot (this will adjust to the remaining space)
 plot_frame = ttk.Frame(root)
