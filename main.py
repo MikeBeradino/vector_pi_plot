@@ -22,7 +22,7 @@ else:
 current_layer = 1  # Default to Layer 1
 # Store properties for six layers
 layer_properties = {i: None for i in range(1, 7)}
-layer_properties[current_layer] = {'num_layers': 5, 'num_sides': 4, 'shape_size': 5, 'size_increment': 2, 'rotation_increment': 15, 'x_offset': 0, 'y_offset': 0, 'arc_extent': 360, 'roundness': 0, 'color': 'black'}
+layer_properties[current_layer] = {'num_layers': 5, 'num_sides': 4, 'shape_size': 5, 'size_increment': 2, 'rotation_increment': 15, 'x_offset': 0, 'y_offset': 0, 'arc_extent': 360, 'roundness': 0, 'color': 'green'}
 
 
 current_color = layer_properties[current_layer]['color']  # Default color of Layer 1
@@ -316,13 +316,14 @@ control_frame.pack_propagate(False)
 color_frame = ttk.Frame(control_frame)
 color_frame.pack(pady=2)
 
-colors = ['green', 'red', 'blue', 'black', 'yellow', 'pink']
+colors = ['green', 'red', 'blue', 'gray', 'yellow', 'pink']
 
 # Adjust the size of the color buttons using width and height
 for i, color in enumerate(colors):
     color_button = Button(
         color_frame,
         bg=color,
+        text=str(i + 1),  # Add the number in the center of each button
         width=1,  # Adjust width
         height=1,  # Adjust height
         command=lambda c=color: set_color(c)
@@ -333,8 +334,8 @@ for i, color in enumerate(colors):
 def reset_all():
     global layer_properties, current_color
     layer_properties = {i: None for i in range(1, 7)}
-    layer_properties[1] = {'num_layers': 5, 'num_sides': 4, 'shape_size': 5, 'size_increment': 2, 'rotation_increment': 15, 'x_offset': 0, 'y_offset': 0, 'arc_extent': 360, 'roundness': 0, 'color': 'black'}
-    current_color = 'black'
+    layer_properties[1] = {'num_layers': 5, 'num_sides': 4, 'shape_size': 5, 'size_increment': 2, 'rotation_increment': 15, 'x_offset': 0, 'y_offset': 0, 'arc_extent': 360, 'roundness': 0, 'color': 'green'}
+    current_color = 'green'
     reset_sliders()
     update_plot()
 
@@ -411,7 +412,7 @@ def initialize_layer_properties(layer):
         'y_offset': 0.0,
         'arc_extent': 360.0,
         'roundness': 0.0,
-        'color': 'black',
+        'color': 'green',
     }
     print(f"Initialized Layer {layer} with default properties.")
 

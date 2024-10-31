@@ -32,10 +32,10 @@ baud_rates = [75, 110, 150, 200, 300, 600, 1200, 2400, 2800, 9600, 19200, 38400,
 
 # Add this near the top of your script
 pen_color_mapping = {
-    1: 'red',
-    2: 'blue',
-    3: 'green',
-    4: 'black',  # Default pen color
+    1: 'green',
+    2: 'red',
+    3: 'blue',
+    4: 'gray',  # Default pen color
     5: 'yellow',
     6: 'pink'
 }
@@ -76,7 +76,7 @@ def send_hpgl_code_from_vect   ():
         for line in lines:
             serial_connection.write(f"{line}\n".encode())
             serial_connection.flush()  # Ensure all data is sent
-            time.sleep(0.1)  # Add a small delay to allow the plotter to process each command
+            time.sleep(0.4)  # Add a small delay to allow the plotter to process each command
             print(line)
 
 
@@ -174,14 +174,15 @@ def convert_svg_to_hpgl():
 
             # Map color to plotter pen using the color-to-pen mapping
             color_to_pen = {
-                '#FF0000': 1,  # Red
-                '#0000FF': 2,  # Blue
-                '#00FF00': 3,  # Green
-                '#000000': 4,  # Black (default)
+                '#008000': 1,  # Green
+                '#FF0000': 2,  # Red
+                '#0000FF': 3,  # Blue
+                '#808080': 4,  # Black (default)
                 '#FFFF00': 5,  # Yellow
-                '#FF00FF': 6,  # Pink
+                '#FFC0CB': 6,  # Pink
             }
             pen_number = color_to_pen.get(color, 4)  # Default to black (pen 4)
+            print(pen_number,color)
             hpgl_code_lines.append(f"SP{pen_number};")  # Select the pen
 
         points = parse_svg_path(path_data)
