@@ -8,7 +8,7 @@ import numpy as np
 import platform
 from xml.dom import minidom
 import tool_paths
-
+import re
 
 # Detect the OS
 is_mac = platform.system() == "Darwin"
@@ -27,8 +27,6 @@ layer_properties[current_layer] = {'num_layers': 5, 'num_sides': 4, 'shape_size'
 
 current_color = layer_properties[current_layer]['color']  # Default color of Layer 1
 
-
-
 # Function to remove rectangles from clipPath elements in the SVG and resave
 def remove_clip_path_rectangles(svg_filename):
     # Load the SVG
@@ -43,9 +41,29 @@ def remove_clip_path_rectangles(svg_filename):
         for rect in rects_in_clip:
             clip_path.removeChild(rect)
 
+
+
     # Resave the modified SVG
     with open(svg_filename, 'w') as updated_svg_file:
         svg_doc.writexml(updated_svg_file)
+
+    remove_empty_clippath_dynamic()
+
+
+def remove_empty_clippath_dynamic():
+    # Open the SVG and read its contents
+    with open("vector_output.svg", 'r', encoding='utf-8') as file:
+        svg_content = file.read()
+
+    # Regular expression to match an empty <clipPath> element with any id
+    pattern = r'<clipPath id="[^"]*">\s*</clipPath>'
+
+    # Remove the matched <clipPath> element
+    modified_svg_content = re.sub(pattern, '', svg_content)
+
+    # Write the modified content to a new file
+    with open("vector_output.svg", 'w', encoding='utf-8') as file:
+        file.write(modified_svg_content)
 
 
 def generate_concentric_polygons(ax, properties):
@@ -112,24 +130,22 @@ def apply_bezier_roundness(x_points, y_points, roundness_factor):
 
     return np.array(new_x_points), np.array(new_y_points)
 
-
 # Function to export the current plot to SVG without any borders
 def export_to_svg():
     svg_filename = "vector_output.svg"
     fig.savefig(svg_filename, format='svg', bbox_inches='tight')
     print(f"SVG file saved as {svg_filename}")
-
     # Call the post-processing function to remove the rectangle from clipPath
     remove_clip_path_rectangles(svg_filename)
     print(f"Post-processed SVG saved without clipPath rectangles.")
-
 
 def update_plot():
     """Redraw the entire canvas with all layers."""
     ax.clear()  # Clear the canvas
     ax.set_facecolor('#cdc7c5')  # Set background color
-    ax.set_xlim(-100, 100)  # Set X-axis limits
-    ax.set_ylim(-100, 100)  # Set Y-axis limits
+    ax.set_ylim(-160, 160)  # Set X-axis limits for 200 real-world width
+    ax.set_xlim(-200, 200)  # Set Y-axis limits for 250 real-world height
+
     ax.set_aspect('equal')  # Maintain aspect ratio
     ax.axis('off')  # Hide axes
 
@@ -143,8 +159,6 @@ def update_plot():
 
     # Redraw the canvas
     canvas.draw()
-
-
 
 def clear_layer():
     """Clear the currently selected layer."""
@@ -160,12 +174,9 @@ def set_color(color):
         layer_properties[current_layer]['color'] = current_color
     update_plot()
 
-
 # Create main window
 root = tk.Tk()
 root.title("Concentric Polygon Generator with Layers")
-
-
 
 # Set the window to a standard size (e.g., 800x600)
 root.geometry("1000x800")
@@ -186,8 +197,6 @@ def switch_layer(layer_numb):
     update_sliders_from_properties(properties)
     current_color = properties['color']
     update_plot()
-
-
 
 # Update sliders based on the selected layer's properties
 def update_sliders_from_properties(properties):
@@ -234,17 +243,14 @@ tool_path_button.grid(row=0, column=3, padx=10)
 tool_path_button2 = ttk.Button(button_frame, text="Connect", command=lambda: open_serial_port_window(root))
 tool_path_button2.grid(row=0, column=4, padx=10)
 
-
 # Add a button to open the new window for tool paths
 print_button = ttk.Button(button_frame, text="Print?", command=lambda: tool_paths.send_hpgl_code_from_vect())
 print_button.grid(row=0, column=5, padx=10)
-
 
 # Add a canvas to the right frame for displaying the plot
 fig, ax = plt.subplots(figsize=(6, 6))
 canvas = FigureCanvasTkAgg(fig, master=plot_frame)
 canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-
 
 # Create radio buttons for selecting layers
 layer_var = tk.IntVar(value=1)  # Track selected layer (default to Layer 1)
@@ -252,8 +258,6 @@ layer_frame = ttk.Frame(control_frame)
 layer_frame.pack(pady=10)
 
 ttk.Label(layer_frame, text="Select Layer").grid(row=0, column=0, columnspan=3)
-
-
 
 for i in range(1, 7):
     ttk.Radiobutton(
@@ -263,8 +267,6 @@ for i in range(1, 7):
         value=i,
         command=lambda i=i : switch_layer(i)
     ).grid(row=(i - 1) // 3 + 1, column=(i - 1) % 3, padx=5, pady=5)
-
-
 
 # Label and slider for Number of Shapes, placed at the top
 num_layers_label_var = tk.StringVar()
@@ -284,7 +286,6 @@ y_offset_label_var = tk.StringVar()
 arc_extent_label_var = tk.StringVar()
 roundness_label_var = tk.StringVar()
 
-
 # Add sliders and labels for controlling concentric polygon properties
 def create_slider_with_label(parent, label_text, slider_var, from_, to_, command, resolution=0.01):
     label = ttk.Label(parent, text=label_text)
@@ -293,16 +294,14 @@ def create_slider_with_label(parent, label_text, slider_var, from_, to_, command
     slider.pack(fill='x')
     return slider
 
-
 # Function to update the numeric label when slider is moved
 def update_slider_label(slider_var, slider, command):
     slider_var.set(f"{slider.get():.2f}")
     command()
 
-
 num_sides_slider = create_slider_with_label(control_frame, "Number of Sides", num_sides_label_var, 3, 20,lambda *args: save_current_layer_properties(), resolution=1)  # Integers
-shape_size_slider = create_slider_with_label(control_frame, "Shape Size", shape_size_label_var, 1, 40, lambda *args: save_current_layer_properties())  # Max size 40
-size_increment_slider = create_slider_with_label(control_frame, "Size Increment", size_increment_label_var, 0.5, 5, lambda *args: save_current_layer_properties())
+shape_size_slider = create_slider_with_label(control_frame, "Shape Size", shape_size_label_var, 1, 200, lambda *args: save_current_layer_properties())  # Max size 40
+size_increment_slider = create_slider_with_label(control_frame, "Size Increment", size_increment_label_var, 0.5, 20, lambda *args: save_current_layer_properties())
 rotation_increment_slider = create_slider_with_label(control_frame, "Rotation Increment", rotation_increment_label_var, 0, 90, lambda *args: save_current_layer_properties())
 x_offset_slider = create_slider_with_label(control_frame, "X Offset", x_offset_label_var, -50, 50, lambda *args: save_current_layer_properties())
 y_offset_slider = create_slider_with_label(control_frame, "Y Offset", y_offset_label_var, -50, 50, lambda *args: save_current_layer_properties())
@@ -310,7 +309,6 @@ arc_extent_slider = create_slider_with_label(control_frame, "Arc Extent", arc_ex
 roundness_slider = create_slider_with_label(control_frame, "Roundness", roundness_label_var, 0, 10, lambda *args: save_current_layer_properties())
 # Set fixed size for the control frame
 control_frame.pack_propagate(False)
-
 
 # Add buttons to select color in two rows of 3 + 1 layout with fixed width and height
 color_frame = ttk.Frame(control_frame)
@@ -379,7 +377,6 @@ def save_current_layer_properties():
     # Redraw the plot to reflect the new properties
     update_plot()
 
-
 def reset_sliders():
     """Reset all sliders to default values."""
 
@@ -393,12 +390,6 @@ def reset_sliders():
     arc_extent_slider.set(360)
     roundness_slider.set(0)
     print("Sliders reset to default values.")  # Debugging
-
-# Function to open a new window (for tool path creation or any other feature)
-
-
-# Initialize the plot with default values
-
 
 # Initialize layer properties with default values
 def initialize_layer_properties(layer):
@@ -415,9 +406,6 @@ def initialize_layer_properties(layer):
         'color': 'green',
     }
     print(f"Initialized Layer {layer} with default properties.")
-
-
-
 
 reset_all()
 

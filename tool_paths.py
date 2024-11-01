@@ -135,8 +135,6 @@ def convert_px_to_pt(px_value):
     return px_value / 1.333
 
 # Updated function to convert SVG to HPGL, excluding the canvas border and mapping pen colors
-
-
 def convert_svg_to_hpgl():
     global hpgl_code
     svg_doc = minidom.parse(current_svg)
@@ -149,8 +147,8 @@ def convert_svg_to_hpgl():
     canvas_width_px, canvas_height_px = get_svg_canvas_size(current_svg)
 
     # HPGL max units (for A4 paper in landscape)
-    HPGL_MAX_UNITS_X = 11880
-    HPGL_MAX_UNITS_Y = 8400
+    HPGL_MAX_UNITS_X = int(13000)  # ≈ 11314 for 200 mm
+    HPGL_MAX_UNITS_Y = int(16800 )  # ≈ 14142 for 250 mm
 
     # Calculate a uniform scaling factor to maintain aspect ratio
     x_scale = HPGL_MAX_UNITS_X / canvas_width_px
