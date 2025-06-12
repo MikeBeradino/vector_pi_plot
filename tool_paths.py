@@ -8,6 +8,10 @@ import math
 import serial.tools.list_ports  # For serial port discovery
 import serial  # For serial communication
 import time
+from tkinter import filedialog
+
+from svg.path import parse_path
+from xml.dom import minidom
 #from print_module import HPGLPrinter
 
 # Plotter speeds in mm/s
@@ -111,112 +115,185 @@ def parse_svg_path(path_data):
 
 # Function to get the dimensions of the SVG canvas
 def convert_to_pixels(value_str):
-    if value_str.endswith('px'):
-        return float(value_str[:-2])  # Remove 'px' and convert to float
-    elif value_str.endswith('pt'):
-        return float(value_str[:-2]) * 1.333  # Convert 'pt' to 'px'
-    else:
-        return float(value_str)  # Assume it's already in pixels or has no units
+    try:
+        if not value_str or value_str.strip() == "":
+            return None
+        value_str = value_str.strip()
+        if value_str.endswith('px'):
+            return float(value_str[:-2])
+        elif value_str.endswith('pt'):
+            return float(value_str[:-2]) * 1.333
+        elif value_str.endswith('mm'):
+            return float(value_str[:-2]) * 3.7795275591
+        elif value_str.endswith('cm'):
+            return float(value_str[:-2]) * 37.795275591
+        elif value_str.endswith('in'):
+            return float(value_str[:-2]) * 96
+        elif value_str.endswith('%'):
+            print(f"Warning: Percentage unit '{value_str}' not supported. Returning None.")
+            return None
+        else:
+            return float(value_str)
+    except ValueError:
+        print(f"Could not parse dimension '{value_str}'. Returning None.")
+        return None
+
+
 
 def get_svg_canvas_size(svg_filename):
     svg_doc = minidom.parse(svg_filename)
     svg_element = svg_doc.getElementsByTagName('svg')[0]
+
     width = svg_element.getAttribute('width')
     height = svg_element.getAttribute('height')
+    print(f"SVG raw width: '{width}', height: '{height}'")
 
-    # Convert width and height to pixels
     width_px = convert_to_pixels(width)
     height_px = convert_to_pixels(height)
 
+    # Fallback to viewBox if dimensions fail
+    if not width_px or not height_px or width_px <= 0 or height_px <= 0:
+        view_box = svg_element.getAttribute('viewBox')
+        if view_box:
+            print("Falling back to viewBox dimensions.")
+            parts = view_box.strip().split()
+            if len(parts) == 4:
+                width_px = float(parts[2])
+                height_px = float(parts[3])
+
     return width_px, height_px
+
 
 # Function to convert from pixels (px) to points (pt)
 def convert_px_to_pt(px_value):
     return px_value / 1.333
 
+
+from svg.path import parse_path
+from xml.dom import minidom
+
+def parse_svg_path_accurate(svg_filename):
+    doc = minidom.parse(svg_filename)
+    path_elements = doc.getElementsByTagName('path')
+    all_points = []
+
+    for path_el in path_elements:
+        d = path_el.getAttribute('d')
+        if not d:
+            continue
+        path = parse_path(d)
+
+        # Sample points along the path
+        sampled_points = []
+        for segment in path:
+            for t in [i / 10.0 for i in range(11)]:  # 10 segments per curve/line
+                point = segment.point(t)
+                sampled_points.append((point.real, point.imag))
+
+        all_points.append(sampled_points)
+
+    doc.unlink()
+    return all_points
+
+
 # Updated function to convert SVG to HPGL, excluding the canvas border and mapping pen colors
+from xml.dom import minidom
+from svg.path import parse_path
+import re
+import tkinter as tk
+
 def convert_svg_to_hpgl():
     global hpgl_code
+
     svg_doc = minidom.parse(current_svg)
     path_elements = svg_doc.getElementsByTagName('path')
 
-    # Initialize plotter command (HPGL)
-    hpgl_code_lines = ["IN;", "PA;"]  # Initialize plotter and use absolute coordinates
+    # Initialize HPGL
+    hpgl_code_lines = ["IN;", "PA;"]
 
-    # Get the canvas size in pixels
+    # Get SVG canvas size
     canvas_width_px, canvas_height_px = get_svg_canvas_size(current_svg)
 
-    # HPGL max units (for A4 paper in landscape)
-    HPGL_MAX_UNITS_X = int(13000)  # ≈ 11314 for 200 mm
-    HPGL_MAX_UNITS_Y = int(16800 )  # ≈ 14142 for 250 mm
+    # HPGL space
+    HPGL_MAX_UNITS_X = 13000
+    HPGL_MAX_UNITS_Y = 16800
 
-    # Calculate a uniform scaling factor to maintain aspect ratio
+    # Scale to fit canvas
     x_scale = HPGL_MAX_UNITS_X / canvas_width_px
     y_scale = HPGL_MAX_UNITS_Y / canvas_height_px
-
-    # Use the smaller scaling factor to maintain aspect ratio
     uniform_scale = min(x_scale, y_scale)
 
     print(f"Uniform scale factor: {uniform_scale}")
 
-    # Process each path element to generate HPGL commands
+    seen_paths = set()
+
     for path in path_elements:
         path_data = path.getAttribute('d')
         path_color = path.getAttribute('style')
 
-        # Extract the stroke color from the 'style' attribute
-        color_match = re.search(r'stroke:([^;]+);', path_color)
+        if not path_data or path_data in seen_paths:
+            continue  # skip duplicates or empty paths
+        seen_paths.add(path_data)
 
-        if color_match:
-            color = color_match.group(1).strip().upper()
+        # Extract pen number from stroke color
+        pen_number = 4
+        if path_color:
+            color_match = re.search(r'stroke:([^;]+);', path_color)
+            if color_match:
+                color = color_match.group(1).strip().upper()
+                color_to_pen = {
+                    '#008000': 1,  # Green
+                    '#FF0000': 2,  # Red
+                    '#0000FF': 3,  # Blue
+                    '#808080': 4,  # Gray/Black
+                    '#FFFF00': 5,  # Yellow
+                    '#FFC0CB': 6,  # Pink
+                }
+                pen_number = color_to_pen.get(color, 4)
 
-            # Map color to plotter pen using the color-to-pen mapping
-            color_to_pen = {
-                '#008000': 1,  # Green
-                '#FF0000': 2,  # Red
-                '#0000FF': 3,  # Blue
-                '#808080': 4,  # Black (default)
-                '#FFFF00': 5,  # Yellow
-                '#FFC0CB': 6,  # Pink
-            }
-            pen_number = color_to_pen.get(color, 4)  # Default to black (pen 4)
-            print(pen_number,color)
-            hpgl_code_lines.append(f"SP{pen_number};")  # Select the pen
+        hpgl_code_lines.append(f"SP{pen_number};")
 
-        points = parse_svg_path(path_data)
+        # Parse and convert path
+        try:
+            path_obj = parse_path(path_data)
+        except Exception as e:
+            print(f"Error parsing path: {e}")
+            continue
 
-        if points:
-            # Move to the starting point with Pen Up (PU)
+        for segment in path_obj:
+            if segment.length(error=1e-2) == 0:
+                continue  # skip zero-length segments
+
+            # Sample points along the segment
+            points = [(segment.point(t).real, segment.point(t).imag) for t in [i / 10.0 for i in range(11)]]
+            if not points:
+                continue
+
+            # Start new path
             start_x, start_y = points[0]
-            scaled_start_x = int(start_x * uniform_scale)
-            scaled_start_y = int(start_y * uniform_scale)
-            hpgl_code_lines.append(f"PU{scaled_start_x},{scaled_start_y};")
+            hpgl_code_lines.append(f"PU{int(start_x * uniform_scale)},{int(start_y * uniform_scale)};")
+            hpgl_code_lines.append("PD;")
 
-            # Begin drawing with Pen Down (PD)
-            hpgl_code_lines.append("PD;")  # Start Pen Down sequence
-
-            # Draw the path by adding each point with PA commands
+            last_pt = (int(start_x * uniform_scale), int(start_y * uniform_scale))
             for x, y in points[1:]:
                 scaled_x = int(x * uniform_scale)
                 scaled_y = int(y * uniform_scale)
-                hpgl_code_lines.append(f"PA{scaled_x},{scaled_y};")
+                if (scaled_x, scaled_y) != last_pt:
+                    hpgl_code_lines.append(f"PA{scaled_x},{scaled_y};")
+                    last_pt = (scaled_x, scaled_y)
 
-            # End the drawing with Pen Up (PU)
             hpgl_code_lines.append("PU;")
 
-    # Display the generated HPGL code in the text box
+    # Finalize HPGL output
+    hpgl_code = '\n'.join(hpgl_code_lines)
     hpgl_text_box.delete(1.0, tk.END)
     hpgl_text_box.insert(tk.END, hpgl_code)
 
-    # Join all HPGL commands into a single string
-    hpgl_code = '\n'.join(hpgl_code_lines)
-
-    # Display the generated HPGL code (for debugging purposes)
     print("Generated HPGL Code:\n", hpgl_code)
 
-    # Optionally, write the HPGL code to a file
     with open("output.hpgl", "w") as hpgl_file:
         hpgl_file.write(hpgl_code)
+
 
 # Function to calculate distance between two points
 def calculate_distance(x1, y1, x2, y2):
@@ -380,6 +457,9 @@ def open_tool_path_window(root):
     new_window.columnconfigure(1, weight=1)
     new_window.rowconfigure(1, weight=1)
 
+    select_button = ttk.Button(frame, text="Select SVG and Convert", command=select_svg_and_convert)
+    select_button.grid(row=0, column=4, padx=10, pady=5)
+
 # Serial Port Testing Module
 def open_serial_port_window(root):
     serial_window = tk.Toplevel(root)
@@ -416,4 +496,15 @@ def open_serial_port_window(root):
     # Set up grid layout for flexibility
     serial_window.columnconfigure(0, weight=1)
     serial_window.rowconfigure(1, weight=1)
+
+def select_svg_and_convert():
+    global current_svg
+    file_path = filedialog.askopenfilename(
+        title="Select SVG File",
+        filetypes=[("SVG files", "*.svg")]
+    )
+    if file_path:
+        current_svg = file_path
+        convert_svg_to_hpgl()
+        visualize_hpgl(hpgl_preview_frame, pen_color_mapping)
 
