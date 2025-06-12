@@ -41,7 +41,7 @@ This project is a **Concentric Polygon Generator** with **Layered Editing** and 
     pip install -r requirements.txt
     ```
 
-    Make sure to include dependencies such as `tkinter`, `matplotlib`, and `xml.dom.minidom`.
+  
 
 ## Running the Project
 
