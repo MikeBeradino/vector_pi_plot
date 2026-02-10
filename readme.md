@@ -1,13 +1,29 @@
-# Concentric Polygon Generator with HPGL Tool Path Preview
+## Concentric Polygon Generator with HPGL Tool Path Preview + Serial Plotter Control (Mockup)
 
-This project is a **Concentric Polygon Generator** with **Layered Editing** and **HPGL Tool Path Generation**. It provides a graphical interface for creating polygonal designs with multiple layers, exporting them as SVG, and generating HPGL code for plotting on devices like the **HP 7475A** plotter.
+This project is a **Concentric Polygon Generator** with **Layered Editing**, **HPGL Tool Path Generation**, and **direct serial control** for pen plotters like the **HP 7475A**. It provides a graphical interface for creating polygon-based designs, exporting SVG, previewing HPGL toolpaths, and sending plot commands to a connected plotter.
 
-## Features
+> **Mockup / prototype note:** This README describes the intended workflow and UI structure. Labels, window layout, and some behaviors may still be in flux as the tool evolves.
 
-- **Multi-Layer Editing**: Up to six independent layers, each with its own set of properties such as number of sides, size, rotation, and color.
-- **SVG Export**: Generate SVG files from your designs with the option to post-process the file and remove unnecessary borders.
-- **HPGL Tool Path Preview**: Convert the SVG into HPGL code, visualize tool paths with color-coded pens, and estimate plotting time.
-- **Pen-Up Movements**: Pen-up movements are represented as dashed blue lines, and pen-down movements reflect the actual color of the plotter pens.
+### Features
+
+**Multi-Layer Editing**  
+Up to six independent layers, each with its own properties: number of sides, size, incremental scaling, rotation, offsets, arc extent, roundness, and pen color.
+
+**SVG Export + Cleanup**  
+Export designs to SVG and automatically post-process the file to remove unwanted `clipPath` rectangles / borders that can interfere with downstream toolpath generation.
+
+**HPGL Tool Path Preview**  
+Convert the SVG into HPGL, visualize tool paths with color-coded pens, and estimate plotting time before committing to a plot.
+
+**Pen-Up / Pen-Down Visualization**  
+Pen-up travel moves are shown as dashed blue paths; pen-down strokes reflect the selected pen colors—matching how the plotter will draw.
+
+**Serial Connection Window (Plotter I/O)**  
+Includes a small serial connection panel for selecting a port and establishing a connection to the plotter. Once connected, the app can send HPGL commands directly—enabling a workflow that goes from design → toolpath → plot without leaving the interface.
+
+**One-Interface Workflow**  
+The intent is a single environment for iteration: design changes update the preview, HPGL regenerates from the same geometry, and the connected plotter can be driven from the same session.
+
 
 ### Main Window
 
