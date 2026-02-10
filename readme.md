@@ -1,4 +1,4 @@
-## Concentric Polygon Generator + Serial Plotter Control (
+## Concentric Polygon Generator + Serial Plotter Control (**HP 7475A**)
 
 This project is a **Concentric Polygon Generator** with **Layered Editing**, **HPGL Tool Path Generation**, and **direct serial control** for pen plotters like the **HP 7475A**. It provides a graphical interface for creating polygon-based designs, exporting SVG, previewing HPGL toolpaths, and sending plot commands to a connected plotter.
 
